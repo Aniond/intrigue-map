@@ -27,11 +27,23 @@ Hooks.once("init", () => {
     type:    Object,
     default: { nodes: [], edges: [] },
   });
+
+  // Register /intrigue and /im chat commands.
+  // Must happen in "init" — before ChatLog is instantiated.
+  // ChatLog.CHAT_COMMANDS is a plain object keyed by command name.
+  for (const cmd of ["intrigue", "im"]) {
+    ChatLog.CHAT_COMMANDS[cmd] = {
+      pattern:  new RegExp(`^\/(?:${cmd})\s*$`, "i"),
+      callback: (_chatLog, _match, _messageData) => {
+        IntrigueMapApp.openDefault();
+        return false;
+      },
+    };
+  }
 });
 
 // ── Scene controls ────────────────────────────────────────────────────────────
 // V13: controls is a Map<string, group>; tools inside each group is also a Map.
-// V12: controls is a plain Array; tools is a plain Array.
 // We also register a Ctrl+Shift+I keybinding as a reliable fallback.
 
 Hooks.on("getSceneControlButtons", (controls) => {
@@ -65,23 +77,6 @@ Hooks.once("ready", () => {
     onDown:   () => { IntrigueMapApp.openDefault(); return true; },
   });
   console.log(`${MODULE_ID} | Ready — Ctrl+Shift+I or /intrigue in chat`);
-});
-
-// ── Chat command ──────────────────────────────────────────────────────────────
-// V13: ChatLog.registerCommand() must be used — unknown /commands are rejected
-//      before the chatMessage hook fires.
-// V12: chatMessage hook with return false is sufficient.
-
-Hooks.once("setup", () => {
-  for (const cmd of ["intrigue", "im"]) {
-    ChatLog.registerCommand({
-      name:        cmd,
-      module:      MODULE_ID,
-      description: game.i18n.localize("INTRIGUEMAP.OpenMap"),
-      icon:        "fas fa-spider-web",
-      callback:    () => IntrigueMapApp.openDefault(),
-    });
-  }
 });
 
 // ── Persistence ───────────────────────────────────────────────────────────────

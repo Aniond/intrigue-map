@@ -22,5 +22,6 @@
   "INTRIGUEMAP.Config.Actor": "Link to Actor",
   "INTRIGUEMAP.Clear.Title": "Clear Map",
   "INTRIGUEMAP.Clear.Confirm": "This will delete all nodes and edges. Are you sure?",
-  "INTRIGUEMAP.Legend.Hint": "Drag to move • Click to select • Double-click to configure • Link mode to draw edges"
+  "INTRIGUEMAP.Legend.Hint": "Drag to move • Click to select • Double-click to configure • Link mode to draw edges",
+  "INTRIGUEMAP.ChatCommand": "Chat commands: /intrigue or /im"
 }

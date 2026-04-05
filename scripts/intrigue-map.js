@@ -34,32 +34,65 @@ Hooks.once("init", () => {
 });
 
 // ── Scene controls ────────────────────────────────────────────────────────────
+// V13: controls is a Map<string, group>; tools inside each group is also a Map.
+// V12: controls is a plain Array; tools is a plain Array.
+// We also register a Ctrl+Shift+I keybinding as a reliable fallback.
 
 Hooks.on("getSceneControlButtons", (controls) => {
-  if (isV13()) {
-    // V13: controls is a Map<string, SceneControl>
-    const notesGroup = typeof controls.get === "function" && controls.get("notes");
-    if (notesGroup) {
-      notesGroup.tools.set("intrigue-map", {
+  const label = game.i18n.localize("INTRIGUEMAP.OpenMap");
+
+  if (isV13() && typeof controls.get === "function") {
+    // Try the "notes" key first, then scan by icon as fallback
+    let group = controls.get("notes");
+    if (!group) {
+      for (const [, g] of controls) {
+        if (g.name === "notes" || g.icon === "fa-bookmark") { group = g; break; }
+      }
+    }
+    if (group && group.tools instanceof Map) {
+      group.tools.set("intrigue-map", {
         name:     "intrigue-map",
-        title:    "INTRIGUEMAP.OpenMap",
+        title:    label,
         icon:     "fas fa-spider-web",
         button:   true,
-        onChange: (active) => { if (active) IntrigueMapApp.openDefault(); },
+        onChange: () => IntrigueMapApp.openDefault(),
       });
     }
-  } else {
-    // V12: controls is an Array
-    const bar = Array.isArray(controls) && controls.find((c) => c.name === "notes");
+  } else if (Array.isArray(controls)) {
+    // V12
+    const bar = controls.find((c) => c.name === "notes");
     if (bar) {
       bar.tools.push({
         name:    "intrigue-map",
-        title:   game.i18n.localize("INTRIGUEMAP.OpenMap"),
+        title:   label,
         icon:    "fas fa-spider-web",
         button:  true,
         onClick: () => IntrigueMapApp.openDefault(),
       });
     }
+  }
+});
+
+// Keybinding fallback: Ctrl+Shift+I always opens the map
+Hooks.once("ready", () => {
+  game.keybindings?.register(MODULE_ID, "openMap", {
+    name:     game.i18n.localize("INTRIGUEMAP.OpenMap"),
+    hint:     "Open the Intrigue Map window",
+    editable: [{ key: "KeyI", modifiers: ["Control", "Shift"] }],
+    onDown:   () => { IntrigueMapApp.openDefault(); return true; },
+  });
+  console.log(`${MODULE_ID} | Ready — Ctrl+Shift+I or /intrigue in chat`);
+});
+
+// ── Chat command ──────────────────────────────────────────────────────────────
+// Type /intrigue (or /im) in any chat message to open the map.
+// The message is suppressed so it doesn't appear in the chat log.
+
+Hooks.on("chatMessage", (_chatLog, message, _chatData) => {
+  const cmd = message.trim().toLowerCase();
+  if (cmd === "/intrigue" || cmd === "/im") {
+    IntrigueMapApp.openDefault();
+    return false; // returning false cancels the message
   }
 });
 

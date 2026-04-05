@@ -1,0 +1,43 @@
+<div id="im-root">
+  <div id="im-toolbar">
+    <button class="im-btn" data-action="add-pc" title="{{localize 'INTRIGUEMAP.AddPC'}}">
+      <i class="fas fa-user"></i> PC
+    </button>
+    <button class="im-btn" data-action="add-npc" title="{{localize 'INTRIGUEMAP.AddNPC'}}">
+      <i class="fas fa-user-secret"></i> NPC
+    </button>
+    <button class="im-btn" data-action="add-event" title="{{localize 'INTRIGUEMAP.AddEvent'}}">
+      <i class="fas fa-bolt"></i> Event
+    </button>
+    <button class="im-btn" data-action="add-place" title="{{localize 'INTRIGUEMAP.AddPlace'}}">
+      <i class="fas fa-map-marker-alt"></i> Place
+    </button>
+    <div class="im-sep"></div>
+    <button class="im-btn" data-action="link" title="{{localize 'INTRIGUEMAP.LinkNodes'}}">
+      <i class="fas fa-link"></i> Link
+    </button>
+    <button class="im-btn" data-action="delete" title="{{localize 'INTRIGUEMAP.Delete'}}">
+      <i class="fas fa-trash"></i>
+    </button>
+    <div class="im-sep"></div>
+    <button class="im-btn" data-action="save" title="{{localize 'INTRIGUEMAP.Save'}}">
+      <i class="fas fa-save"></i>
+    </button>
+    <button class="im-btn im-btn-danger" data-action="clear" title="{{localize 'INTRIGUEMAP.Clear.Title'}}">
+      <i class="fas fa-times-circle"></i>
+    </button>
+  </div>
+
+  <div id="im-map-area">
+    <svg id="im-edges" xmlns="http://www.w3.org/2000/svg"></svg>
+    <div id="im-canvas"></div>
+  </div>
+
+  <div id="im-legend">
+    <span class="im-legend-item im-legend-pc">PC</span>
+    <span class="im-legend-item im-legend-npc">NPC</span>
+    <span class="im-legend-item im-legend-event">Event</span>
+    <span class="im-legend-item im-legend-place">Place</span>
+    <span class="im-legend-hint">{{localize 'INTRIGUEMAP.Legend.Hint'}}</span>
+  </div>
+</div>

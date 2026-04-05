@@ -1,0 +1,30 @@
+{
+  "id": "intrigue-map",
+  "title": "Intrigue Map",
+  "description": "An interactive intrigue map for tracking PC and NPC relationships, events, and places. Nodes link directly to Foundry actor sheets.",
+  "version": "1.1.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "13",
+    "maximum": "13"
+  },
+  "authors": [
+    {
+      "name": "Aniond",
+      "url": "https://github.com/Aniond"
+    }
+  ],
+  "url": "https://github.com/Aniond/intrigue-map",
+  "manifest": "https://raw.githubusercontent.com/Aniond/intrigue-map/main/module.json",
+  "download": "https://github.com/Aniond/intrigue-map/releases/latest/download/intrigue-map.zip",
+  "scripts": ["scripts/intrigue-map.js"],
+  "styles": ["styles/intrigue-map.css"],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "flags": {}
+}

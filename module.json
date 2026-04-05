@@ -2,7 +2,7 @@
   "id": "intrigue-map",
   "title": "Intrigue Map",
   "description": "An interactive intrigue map for tracking PC and NPC relationships, events, and places. Nodes link directly to Foundry actor sheets.",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "compatibility": {
     "minimum": "12",
     "verified": "13",

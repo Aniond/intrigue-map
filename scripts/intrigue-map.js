@@ -85,14 +85,31 @@ Hooks.once("ready", () => {
 });
 
 // ── Chat command ──────────────────────────────────────────────────────────────
-// Type /intrigue (or /im) in any chat message to open the map.
-// The message is suppressed so it doesn't appear in the chat log.
+// V13: ChatLog.registerCommand() must be used — unknown /commands are rejected
+//      before the chatMessage hook fires.
+// V12: chatMessage hook with return false is sufficient.
 
-Hooks.on("chatMessage", (_chatLog, message, _chatData) => {
-  const cmd = message.trim().toLowerCase();
-  if (cmd === "/intrigue" || cmd === "/im") {
-    IntrigueMapApp.openDefault();
-    return false; // returning false cancels the message
+Hooks.once("setup", () => {
+  if (isV13() && typeof ChatLog?.registerCommand === "function") {
+    // Register both /intrigue and /im as valid commands
+    for (const cmd of ["intrigue", "im"]) {
+      ChatLog.registerCommand({
+        name:        cmd,
+        module:      MODULE_ID,
+        description: game.i18n.localize("INTRIGUEMAP.OpenMap"),
+        icon:        "fas fa-spider-web",
+        callback:    () => IntrigueMapApp.openDefault(),
+      });
+    }
+  } else {
+    // V12 fallback: intercept via chatMessage hook
+    Hooks.on("chatMessage", (_chatLog, message) => {
+      const cmd = message.trim().toLowerCase();
+      if (cmd === "/intrigue" || cmd === "/im") {
+        IntrigueMapApp.openDefault();
+        return false;
+      }
+    });
   }
 });
 

@@ -111,7 +111,14 @@ async function imPrompt({ title, content, callback }) {
     await DV2.prompt({
       window:  { title },
       content,
-      ok: { callback: (_e, _btn, dialog) => { result = callback(dialog); } },
+      ok: {
+        // V13: DialogV2._onSubmit passes (event, button, dialogInstance)
+        // dialogInstance is the ApplicationV2 object — use .element to get the DOM node
+        callback: (_event, _button, dialogInstance) => {
+          const root = dialogInstance?.element ?? dialogInstance;
+          result = callback(root);
+        },
+      },
     });
     return result;
   }

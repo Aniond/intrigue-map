@@ -15,10 +15,6 @@
 
 const MODULE_ID = "intrigue-map";
 
-// ── Version detection ─────────────────────────────────────────────────────────
-
-const isV13 = () => (game.release?.generation ?? 0) >= 13;
-
 // ── Registration ──────────────────────────────────────────────────────────────
 
 Hooks.once("init", () => {
@@ -41,35 +37,22 @@ Hooks.once("init", () => {
 Hooks.on("getSceneControlButtons", (controls) => {
   const label = game.i18n.localize("INTRIGUEMAP.OpenMap");
 
-  if (isV13() && typeof controls.get === "function") {
-    // Try the "notes" key first, then scan by icon as fallback
-    let group = controls.get("notes");
-    if (!group) {
-      for (const [, g] of controls) {
-        if (g.name === "notes" || g.icon === "fa-bookmark") { group = g; break; }
-      }
+  // V13: controls is a Map<string, group>; tools is also a Map.
+  if (typeof controls.get !== "function") return;
+  let group = controls.get("notes");
+  if (!group) {
+    for (const [, g] of controls) {
+      if (g.name === "notes" || g.icon === "fa-bookmark") { group = g; break; }
     }
-    if (group && group.tools instanceof Map) {
-      group.tools.set("intrigue-map", {
-        name:     "intrigue-map",
-        title:    label,
-        icon:     "fas fa-spider-web",
-        button:   true,
-        onChange: () => IntrigueMapApp.openDefault(),
-      });
-    }
-  } else if (Array.isArray(controls)) {
-    // V12
-    const bar = controls.find((c) => c.name === "notes");
-    if (bar) {
-      bar.tools.push({
-        name:    "intrigue-map",
-        title:   label,
-        icon:    "fas fa-spider-web",
-        button:  true,
-        onClick: () => IntrigueMapApp.openDefault(),
-      });
-    }
+  }
+  if (group && group.tools instanceof Map) {
+    group.tools.set("intrigue-map", {
+      name:     "intrigue-map",
+      title:    label,
+      icon:     "fas fa-spider-web",
+      button:   true,
+      onChange: () => IntrigueMapApp.openDefault(),
+    });
   }
 });
 
@@ -90,25 +73,13 @@ Hooks.once("ready", () => {
 // V12: chatMessage hook with return false is sufficient.
 
 Hooks.once("setup", () => {
-  if (isV13() && typeof ChatLog?.registerCommand === "function") {
-    // Register both /intrigue and /im as valid commands
-    for (const cmd of ["intrigue", "im"]) {
-      ChatLog.registerCommand({
-        name:        cmd,
-        module:      MODULE_ID,
-        description: game.i18n.localize("INTRIGUEMAP.OpenMap"),
-        icon:        "fas fa-spider-web",
-        callback:    () => IntrigueMapApp.openDefault(),
-      });
-    }
-  } else {
-    // V12 fallback: intercept via chatMessage hook
-    Hooks.on("chatMessage", (_chatLog, message) => {
-      const cmd = message.trim().toLowerCase();
-      if (cmd === "/intrigue" || cmd === "/im") {
-        IntrigueMapApp.openDefault();
-        return false;
-      }
+  for (const cmd of ["intrigue", "im"]) {
+    ChatLog.registerCommand({
+      name:        cmd,
+      module:      MODULE_ID,
+      description: game.i18n.localize("INTRIGUEMAP.OpenMap"),
+      icon:        "fas fa-spider-web",
+      callback:    () => IntrigueMapApp.openDefault(),
     });
   }
 });
@@ -122,45 +93,35 @@ function makeId()          { return foundry.utils.randomID(8); }
 // ── Dialog compat shims ───────────────────────────────────────────────────────
 
 async function imPrompt({ title, content, callback }) {
-  if (isV13() && foundry.applications?.api?.DialogV2) {
-    const DV2 = foundry.applications.api.DialogV2;
-    let result = null;
-    await DV2.prompt({
-      window:  { title },
-      content,
-      ok: {
-        // V13: DialogV2._onSubmit passes (event, button, dialogInstance)
-        // dialogInstance is the ApplicationV2 object — use .element to get the DOM node
-        callback: (_event, _button, dialogInstance) => {
-          const root = dialogInstance?.element ?? dialogInstance;
-          result = callback(root);
-        },
+  const DV2 = foundry.applications.api.DialogV2;
+  let result = null;
+  await DV2.prompt({
+    window:  { title },
+    content,
+    ok: {
+      // DialogV2 passes (event, button, dialogInstance) — use .element for the DOM
+      callback: (_event, _button, dialogInstance) => {
+        result = callback(dialogInstance?.element ?? dialogInstance);
       },
-    });
-    return result;
-  }
-  return Dialog.prompt({ title, content, callback: (html) => callback(html[0]) });
+    },
+  });
+  return result;
 }
 
 async function imConfirm({ title, content, yes }) {
-  if (isV13() && foundry.applications?.api?.DialogV2) {
-    const DV2 = foundry.applications.api.DialogV2;
-    await DV2.confirm({ window: { title }, content, yes: { callback: yes } });
-    return;
-  }
-  Dialog.confirm({ title, content, yes });
+  const DV2 = foundry.applications.api.DialogV2;
+  await DV2.confirm({ window: { title }, content, yes: { callback: yes } });
 }
 
-// ── IntrigueMapApp factory ────────────────────────────────────────────────────
-// We build the class dynamically so we can extend the right base at runtime.
+// ── IntrigueMapApp ───────────────────────────────────────────────────────────
+// Always use ApplicationV2 (available in V12+). The old Application base class
+// is deprecated in V13 and removed in V16, so we no longer fall back to it.
+// foundry.applications.api is available immediately at script parse time.
 
 function buildApp() {
 
-  // Choose base class
-  const useV2 = isV13() && foundry.applications?.api?.HandlebarsApplicationMixin;
-  const Base  = useV2
-    ? foundry.applications.api.HandlebarsApplicationMixin(foundry.applications.api.ApplicationV2)
-    : Application;
+  const { HandlebarsApplicationMixin, ApplicationV2 } = foundry.applications.api;
+  const Base = HandlebarsApplicationMixin(ApplicationV2);
 
   class IntrigueMapApp extends Base {
 
@@ -186,41 +147,16 @@ function buildApp() {
       main: { template: `modules/${MODULE_ID}/templates/intrigue-map.html` },
     };
 
-    // ── V12 static config ───────────────────────────────────────────────────
-
-    static get defaultOptions() {
-      // Only reached in V12 (V13 uses DEFAULT_OPTIONS)
-      return foundry.utils.mergeObject(super.defaultOptions ?? {}, {
-        id:          "intrigue-map-app",
-        title:       "Intrigue Map",
-        template:    `modules/${MODULE_ID}/templates/intrigue-map.html`,
-        width:       900,
-        height:      620,
-        resizable:   true,
-        minimizable: true,
-        classes:     ["intrigue-map-window"],
-      });
-    }
-
     // ── Singleton opener ────────────────────────────────────────────────────
 
     static openDefault() {
       if (!IntrigueMapApp._instance) IntrigueMapApp._instance = new IntrigueMapApp();
-      if (isV13()) IntrigueMapApp._instance.render({ force: true });
-      else         IntrigueMapApp._instance.render(true);
+      IntrigueMapApp._instance.render({ force: true });
     }
 
-    // ── Data (V12: getData, V13: _prepareContext) ───────────────────────────
+    // ── Data ─────────────────────────────────────────────────────────────────
 
-    getData() {            // V12
-      return this._buildContext();
-    }
-
-    async _prepareContext() {  // V13
-      return this._buildContext();
-    }
-
-    _buildContext() {
+    async _prepareContext() {
       return {
         nodes:  this.mapData.nodes ?? [],
         edges:  this.mapData.edges ?? [],
@@ -230,12 +166,7 @@ function buildApp() {
 
     // ── Listener binding ────────────────────────────────────────────────────
 
-    activateListeners(html) {   // V12
-      super.activateListeners(html);
-      this._bindListeners(html[0]);
-    }
-
-    _onRender() {               // V13
+    _onRender() {
       this._bindListeners(this.element);
     }
 
@@ -348,18 +279,46 @@ function buildApp() {
     }
 
     async _configureNode(node) {
+      // Build actor lookup map as JSON so the inline onchange handler can resolve names
+      const actorMap = Object.fromEntries(game.actors.map((a) => [a.id, a.name]));
+      const actorMapJSON = JSON.stringify(actorMap).replace(/"/g, "&quot;");
+
       const opts = `<option value="">— None —</option>` +
         game.actors.map((a) =>
           `<option value="${a.id}"${a.id===node.actorId?" selected":""}>${a.name} (${a.type})</option>`
         ).join("");
 
+      // Attach the actor→name listener after the dialog renders via a small script tag.
+      // We pass the map via a hidden input to avoid quoting issues in HTML attributes.
       const result = await imPrompt({
         title:   game.i18n.localize("INTRIGUEMAP.Config.Title"),
         content: `<div class="im-config-dialog">
+          <input type="hidden" name="actorMapData" value="${actorMapJSON}"/>
           <label>${game.i18n.localize("INTRIGUEMAP.Config.Name")}<input type="text" name="name" value="${node.name}"/></label>
           <label>${game.i18n.localize("INTRIGUEMAP.Config.Sub")}<input type="text" name="sub" value="${node.sub ?? ""}"/></label>
-          <label>${game.i18n.localize("INTRIGUEMAP.Config.Actor")}<select name="actorId">${opts}</select></label>
-        </div>`,
+          <label>${game.i18n.localize("INTRIGUEMAP.Config.Actor")}
+            <select name="actorId">${opts}</select>
+          </label>
+        </div>
+        <script>
+          (function() {
+            // Wait one tick for the dialog DOM to be fully inserted
+            setTimeout(function() {
+              const dlg   = document.querySelector(".im-config-dialog");
+              if (!dlg) return;
+              const sel   = dlg.querySelector("[name='actorId']");
+              const nameI = dlg.querySelector("[name='name']");
+              const raw   = dlg.querySelector("[name='actorMapData']")?.value ?? "{}";
+              const map   = JSON.parse(raw.replace(/&quot;/g, '"'));
+              if (!sel || !nameI) return;
+              sel.addEventListener("change", function() {
+                if (this.value && map[this.value]) {
+                  nameI.value = map[this.value];
+                }
+              });
+            }, 50);
+          })();
+        <\/script>`,
         callback: (el) => ({
           name:    el.querySelector("[name='name']")?.value ?? node.name,
           sub:     el.querySelector("[name='sub']")?.value ?? "",
